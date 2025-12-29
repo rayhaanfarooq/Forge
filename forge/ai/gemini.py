@@ -2,7 +2,7 @@
 
 import os
 from typing import Optional
-import google.generativeai as genai
+from google import genai
 from forge.ai.base import AIProvider, AIConfig
 
 
@@ -14,6 +14,7 @@ class GeminiProvider(AIProvider):
         "gemini-1.5-flash",
         "gemini-pro",
         "gemini-1.0-pro",
+        "gemini-2.0-flash-exp",
     ]
     
     def __init__(self, config: AIConfig):
@@ -27,8 +28,7 @@ class GeminiProvider(AIProvider):
                 "Set it as an environment variable or in config."
             )
         
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(self.config.model)
+        self.client = genai.Client(api_key=api_key)
     
     def _validate_config(self) -> None:
         """Validate Gemini-specific configuration"""
@@ -46,17 +46,20 @@ class GeminiProvider(AIProvider):
 
 {prompt}"""
             
-            generation_config = genai.types.GenerationConfig(
-                temperature=self.config.temperature,
-            )
+            # Prepare generation parameters
+            generate_kwargs = {
+                "model": self.config.model,
+                "contents": full_prompt,
+            }
             
+            # Add optional parameters if provided
+            if self.config.temperature is not None:
+                generate_kwargs["temperature"] = self.config.temperature
             if self.config.max_tokens:
-                generation_config.max_output_tokens = self.config.max_tokens
+                generate_kwargs["max_output_tokens"] = self.config.max_tokens
             
-            response = self.model.generate_content(
-                full_prompt,
-                generation_config=generation_config,
-            )
+            # Use the new API
+            response = self.client.models.generate_content(**generate_kwargs)
             
             return response.text.strip()
         except Exception as e:
