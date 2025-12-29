@@ -68,6 +68,8 @@ def parse_ai_config(
         api_key = os.getenv("OPENAI_API_KEY")
     elif provider == "anthropic":
         api_key = os.getenv("ANTHROPIC_API_KEY")
+    elif provider == "gemini":
+        api_key = os.getenv("GOOGLE_API_KEY")
     
     return AIConfig(
         provider=provider,
@@ -83,6 +85,7 @@ def _get_default_model(provider: str) -> str:
     defaults = {
         "openai": "gpt-4o-mini",  # Cost-effective default
         "anthropic": "claude-3-opus-20240229",
+        "gemini": "gemini-1.5-flash",  # Fast and cost-effective
     }
     return defaults.get(provider.lower(), "gpt-4o-mini")
 

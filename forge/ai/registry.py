@@ -3,10 +3,12 @@
 from typing import Optional, Type, Dict
 from forge.ai.base import AIProvider, AIConfig
 from forge.ai.openai import OpenAIProvider
+from forge.ai.gemini import GeminiProvider
 
 # Registry of available providers
 PROVIDERS: Dict[str, Type[AIProvider]] = {
     "openai": OpenAIProvider,
+    "gemini": GeminiProvider,
 }
 
 
