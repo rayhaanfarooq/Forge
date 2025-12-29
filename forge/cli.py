@@ -15,6 +15,7 @@ from forge.config import (
     save_config,
     detect_language,
     get_config_path,
+    load_env_file,
 )
 from forge.git_ops import (
     is_git_repo,
@@ -224,6 +225,9 @@ def create_tests(
         console.print("[red]Error: Not in a Git repository[/red]")
         raise typer.Exit(1)
     
+    # Load .env file before loading config
+    load_env_file(repo_root)
+    
     try:
         config = load_config(repo_root)
     except FileNotFoundError as e:
@@ -402,6 +406,9 @@ def submit(
     if repo_root is None:
         console.print("[red]Error: Not in a Git repository[/red]")
         raise typer.Exit(1)
+    
+    # Load .env file before loading config
+    load_env_file(repo_root)
     
     try:
         config = load_config(repo_root)

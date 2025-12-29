@@ -7,6 +7,11 @@ import yaml
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
 
 class AIConfigSection(BaseModel):
     """AI configuration section in .gt.yml"""
@@ -95,6 +100,20 @@ def save_config(config: ForgeConfig, repo_root: Optional[Path] = None) -> None:
             if CONFIG_FILE not in content:
                 with open(gitignore_path, "a") as f:
                     f.write(f"\n{CONFIG_FILE}\n")
+
+
+def load_env_file(repo_root: Optional[Path] = None) -> None:
+    """Load .env file from repository root if it exists"""
+    if load_dotenv is None:
+        return  # python-dotenv not installed
+    
+    if repo_root is None:
+        repo_root = find_repo_root()
+    
+    if repo_root:
+        env_file = repo_root / ".env"
+        if env_file.exists():
+            load_dotenv(env_file, override=False)  # Don't override existing env vars
 
 
 def detect_language(repo_root: Path) -> str:

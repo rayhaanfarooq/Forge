@@ -33,13 +33,18 @@ class TestService:
         """
         # Parse AI configuration with overrides
         if forge_config is None:
-            from forge.config import load_config, find_repo_root
+            from forge.config import load_config, find_repo_root, load_env_file
             try:
                 repo_root = find_repo_root()
                 if repo_root:
+                    load_env_file(repo_root)  # Load .env file before parsing config
                     forge_config = load_config(repo_root)
             except (FileNotFoundError, ValueError):
                 forge_config = None
+                # Still try to load .env even if config doesn't exist
+                repo_root = find_repo_root()
+                if repo_root:
+                    load_env_file(repo_root)
         
         ai_config = parse_ai_config(
             forge_config or ForgeConfig(),
