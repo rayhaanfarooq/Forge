@@ -45,6 +45,13 @@ class TestService:
                 repo_root = find_repo_root()
                 if repo_root:
                     load_env_file(repo_root)
+        else:
+            # If forge_config is provided, we still need to load .env file
+            # for API keys (forge_config doesn't contain API keys for security)
+            from forge.config import find_repo_root, load_env_file
+            repo_root = find_repo_root()
+            if repo_root:
+                load_env_file(repo_root)
         
         ai_config = parse_ai_config(
             forge_config or ForgeConfig(),

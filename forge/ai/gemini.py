@@ -10,6 +10,7 @@ class GeminiProvider(AIProvider):
     """Google Gemini provider for test generation"""
     
     SUPPORTED_MODELS = [
+        "gemini-2.0-flash-lite",
         "gemini-1.5-pro",
         "gemini-1.5-flash",
         "gemini-pro",
@@ -46,20 +47,27 @@ class GeminiProvider(AIProvider):
 
 {prompt}"""
             
-            # Prepare generation parameters
-            generate_kwargs = {
-                "model": self.config.model,
-                "contents": full_prompt,
-            }
-            
-            # Add optional parameters if provided
+            # Build generation config with optional parameters
+            # Note: GenerateContentConfig uses camelCase for parameter names
+            config_params = {}
             if self.config.temperature is not None:
-                generate_kwargs["temperature"] = self.config.temperature
+                config_params["temperature"] = self.config.temperature
             if self.config.max_tokens:
-                generate_kwargs["max_output_tokens"] = self.config.max_tokens
+                config_params["maxOutputTokens"] = self.config.max_tokens
             
-            # Use the new API
-            response = self.client.models.generate_content(**generate_kwargs)
+            # Use the new API - temperature and other params go in config
+            if config_params:
+                generation_config = genai.types.GenerateContentConfig(**config_params)
+                response = self.client.models.generate_content(
+                    model=self.config.model,
+                    contents=full_prompt,
+                    config=generation_config,
+                )
+            else:
+                response = self.client.models.generate_content(
+                    model=self.config.model,
+                    contents=full_prompt,
+                )
             
             return response.text.strip()
         except Exception as e:

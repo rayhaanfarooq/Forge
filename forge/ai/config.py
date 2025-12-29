@@ -63,6 +63,7 @@ def parse_ai_config(
     )
     
     # Get API key from environment (never from config)
+    # Note: .env file should be loaded before this function is called
     api_key = None
     if provider == "openai":
         api_key = os.getenv("OPENAI_API_KEY")
@@ -85,7 +86,7 @@ def _get_default_model(provider: str) -> str:
     defaults = {
         "openai": "gpt-4o-mini",  # Cost-effective default
         "anthropic": "claude-3-opus-20240229",
-        "gemini": "gemini-1.5-flash",  # Fast and cost-effective
+        "gemini": "gemini-2.0-flash-lite",  # Fast and cost-effective
     }
     return defaults.get(provider.lower(), "gpt-4o-mini")
 

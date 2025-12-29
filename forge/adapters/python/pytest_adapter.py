@@ -1,5 +1,6 @@
 """Pytest adapter for Python test generation"""
 
+import os
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -29,11 +30,56 @@ class PythonPytestAdapter(LanguageAdapter):
         python_files = filter_source_files(
             changed_files,
             include_patterns=[],
-            exclude_patterns=["venv/", "node_modules/", "__pycache__/", ".git/"],
+            exclude_patterns=["venv/", "node_modules/", "__pycache__/", ".git/", "tests/"],
             extensions=[".py"],
         )
         
         return python_files
+    
+    def get_all_source_files(
+        self,
+        repo_root: Path,
+        include_patterns: list[str] = None,
+        exclude_patterns: list[str] = None,
+    ) -> list[str]:
+        """Get all Python source files in the repository"""
+        if include_patterns is None:
+            include_patterns = []
+        if exclude_patterns is None:
+            exclude_patterns = ["venv/", "node_modules/", "__pycache__/", ".git/", "tests/", "test/"]
+        
+        # Find all Python files
+        all_python_files = []
+        for py_file in repo_root.rglob("*.py"):
+            # Get relative path from repo root
+            rel_path = str(py_file.relative_to(repo_root))
+            
+            # Always exclude test directories and test files
+            if rel_path.startswith("tests/") or rel_path.startswith("test/"):
+                continue
+            
+            # Check exclude patterns
+            excluded = False
+            for pattern in exclude_patterns:
+                if pattern in rel_path:
+                    excluded = True
+                    break
+            if excluded:
+                continue
+            
+            # Check include patterns (if any specified)
+            if include_patterns:
+                included = False
+                for pattern in include_patterns:
+                    if pattern in rel_path:
+                        included = True
+                        break
+                if not included:
+                    continue
+            
+            all_python_files.append(rel_path)
+        
+        return sorted(all_python_files)
     
     def get_test_file_path(
         self,
@@ -68,12 +114,24 @@ class PythonPytestAdapter(LanguageAdapter):
         raise NotImplementedError("Use test_service.generate_tests_for_file instead")
     
     def run_tests(self, repo_root: Path, test_dir: Path) -> bool:
-        """Run pytest tests"""
+        """Run pytest tests and display all test results"""
         try:
+            # Set PYTHONPATH to include repo root so imports work (e.g., "from src.module import ...")
+            env = os.environ.copy()
+            current_pythonpath = env.get("PYTHONPATH", "")
+            if current_pythonpath:
+                env["PYTHONPATH"] = f"{repo_root}{os.pathsep}{current_pythonpath}"
+            else:
+                env["PYTHONPATH"] = str(repo_root)
+            
+            # Run pytest with verbose output to show all tests
+            # -v: verbose (shows each test)
+            # --tb=short: shorter traceback format
             result = subprocess.run(
-                ["pytest", str(test_dir), "-v"],
+                ["pytest", str(test_dir), "-v", "--tb=short"],
                 cwd=repo_root,
-                capture_output=True,
+                env=env,
+                capture_output=False,  # Don't capture so output is shown immediately
                 text=True,
                 check=False,
             )

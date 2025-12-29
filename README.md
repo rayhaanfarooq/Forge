@@ -6,7 +6,7 @@ Forge is a local-first developer platform built with Python and FastAPI that sim
 
 ## Features
 
-- **Graphite-style Git commands** (`fg sync`, `fg submit`)
+- **Graphite-style Git commands** (`forge sync`, `forge submit`)
 - **Automatic AI-generated tests** for Python files
 - **Dynamic AI provider/model switching** via configuration or CLI
 - **Deterministic local execution**
@@ -52,7 +52,7 @@ export ANTHROPIC_API_KEY="your-api-key-here"
 Navigate to your Git repository and run:
 
 ```bash
-fg init
+forge init
 ```
 
 This will:
@@ -70,21 +70,21 @@ git checkout -b feature/my-change
 # ... edit files ...
 
 # Sync your branch with the base branch
-fg sync
+forge sync
 
 # Generate tests for changed files
-fg create-tests
+forge create-tests
 
 # Run tests
-fg test
+forge test
 
 # Submit your branch (sync + create-tests + test + commit + push)
-fg submit
+forge submit
 ```
 
 ### Commands
 
-#### `fg init`
+#### `forge init`
 
 Initialize Forge in the current Git repository.
 
@@ -93,15 +93,15 @@ Options:
 - `--language`: Project language (auto-detected if not specified)
 - `--test-dir`: Directory for test files (default: `tests/`)
 
-#### `fg sync`
+#### `forge sync`
 
 Rebase the current branch onto the base branch.
 
 ```bash
-fg sync
+forge sync
 ```
 
-#### `fg create-tests`
+#### `forge create-tests`
 
 Generate and update tests for changed Python files.
 
@@ -115,25 +115,25 @@ Options:
 
 ```bash
 # Generate tests for changed files (skip existing)
-fg create-tests
+forge create-tests
 
 # Generate tests with specific model
-fg create-tests --provider openai --model gpt-4o-mini
+forge create-tests --provider openai --model gpt-4o-mini
 
 # Update existing test files
-fg create-tests --update
+forge create-tests --update
 ```
 
-#### `fg test`
+#### `forge test`
 
 Run existing tests.
 
 ```bash
 # Run all tests
-fg test
+forge test
 ```
 
-#### `fg submit`
+#### `forge submit`
 
 Complete workflow: sync, create-tests, test, commit, and push.
 
@@ -146,7 +146,7 @@ Options:
 - `--skip-tests`: Skip test generation and validation
 
 ```bash
-fg submit --provider openai --model gpt-4o-mini
+forge submit --provider openai --model gpt-4o-mini
 ```
 
 ## Configuration
@@ -176,7 +176,7 @@ ai:
 
 You can configure the AI provider and model in `.gt.yml`. CLI flags override these settings for that command invocation.
 
-**Note:** The config file is still named `.gt.yml` for backward compatibility, but the command is `fg`.
+**Note:** The config file is still named `.gt.yml` for backward compatibility.
 
 **Priority order:**
 1. CLI flags (highest priority)

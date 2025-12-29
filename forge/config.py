@@ -113,7 +113,11 @@ def load_env_file(repo_root: Optional[Path] = None) -> None:
     if repo_root:
         env_file = repo_root / ".env"
         if env_file.exists():
-            load_dotenv(env_file, override=False)  # Don't override existing env vars
+            # Load .env file - override=False means don't override existing env vars
+            # This will load env vars from .env if they don't already exist in environment
+            # load_dotenv can take the path as first positional argument or as dotenv_path keyword
+            load_dotenv(str(env_file), override=False)
+        # Note: We don't raise an error if .env doesn't exist - API keys can be set via environment variables
 
 
 def detect_language(repo_root: Path) -> str:
