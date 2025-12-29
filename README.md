@@ -1,0 +1,288 @@
+# Forge
+
+**Opinionated Git workflows with AI-generated tests**
+
+Forge is a local-first developer platform built with Python and FastAPI that simplifies Git branch workflows and automates test generation using AI.
+
+## Features
+
+- **Graphite-style Git commands** (`fg sync`, `fg submit`)
+- **Automatic AI-generated tests** for Python files
+- **Dynamic AI provider/model switching** via configuration or CLI
+- **Deterministic local execution**
+- **Backend-ready architecture** for future dashboards and collaboration features
+
+## Installation
+
+### Prerequisites
+
+- Python 3.9+
+- Git
+- pytest (will be installed as a dependency)
+
+### Setup
+
+1. Clone or download this repository
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Or install in development mode:
+
+```bash
+pip install -e .
+```
+
+3. Set up your AI provider API key:
+
+```bash
+# For OpenAI
+export OPENAI_API_KEY="your-api-key-here"
+
+# Or for Anthropic
+export ANTHROPIC_API_KEY="your-api-key-here"
+```
+
+## Usage
+
+### Initialize Forge
+
+Navigate to your Git repository and run:
+
+```bash
+fg init
+```
+
+This will:
+- Detect your repository language (Python in MVP)
+- Create a `.gt.yml` configuration file
+- Set up the test directory structure
+
+### Workflow
+
+```bash
+# Create a feature branch
+git checkout -b feature/my-change
+
+# Make your code changes
+# ... edit files ...
+
+# Sync your branch with the base branch
+fg sync
+
+# Generate tests for changed files
+fg create-tests
+
+# Run tests
+fg test
+
+# Submit your branch (sync + create-tests + test + commit + push)
+fg submit
+```
+
+### Commands
+
+#### `fg init`
+
+Initialize Forge in the current Git repository.
+
+Options:
+- `--base-branch`: Base branch name (default: `main`)
+- `--language`: Project language (auto-detected if not specified)
+- `--test-dir`: Directory for test files (default: `tests/`)
+
+#### `fg sync`
+
+Rebase the current branch onto the base branch.
+
+```bash
+fg sync
+```
+
+#### `fg create-tests`
+
+Generate and update tests for changed Python files.
+
+Options:
+- `--provider`: AI provider (`openai`, `anthropic`, etc.)
+- `--model`: AI model name (e.g., `gpt-4-turbo-preview`, `gpt-4o-mini`)
+- `--temperature`: Temperature setting (0.0-1.0)
+- `--max-tokens`: Maximum tokens for generation
+- `--api-key`: API key (or use environment variable)
+- `--update`: Update existing test files (regenerate them)
+
+```bash
+# Generate tests for changed files (skip existing)
+fg create-tests
+
+# Generate tests with specific model
+fg create-tests --provider openai --model gpt-4o-mini
+
+# Update existing test files
+fg create-tests --update
+```
+
+#### `fg test`
+
+Run existing tests.
+
+```bash
+# Run all tests
+fg test
+```
+
+#### `fg submit`
+
+Complete workflow: sync, create-tests, test, commit, and push.
+
+Options:
+- `--provider`: AI provider (overrides config)
+- `--model`: AI model name (overrides config)
+- `--temperature`: Temperature setting (overrides config)
+- `--max-tokens`: Maximum tokens (overrides config)
+- `--api-key`: API key (overrides env var)
+- `--skip-tests`: Skip test generation and validation
+
+```bash
+fg submit --provider openai --model gpt-4o-mini
+```
+
+## Configuration
+
+Forge uses a `.gt.yml` file in your repository root:
+
+```yaml
+base_branch: main
+language: python
+test_framework: pytest
+test_dir: tests/
+include:
+  - src/
+exclude:
+  - venv/
+  - node_modules/
+
+# AI Configuration (optional)
+ai:
+  provider: openai
+  model: gpt-4-turbo-preview
+  temperature: 0.3
+  max_tokens: 2048
+```
+
+### AI Provider Configuration
+
+You can configure the AI provider and model in `.gt.yml`. CLI flags override these settings for that command invocation.
+
+**Note:** The config file is still named `.gt.yml` for backward compatibility, but the command is `fg`.
+
+**Priority order:**
+1. CLI flags (highest priority)
+2. `.gt.yml` configuration
+3. Environment variables (`FORGE_AI_PROVIDER`)
+4. Defaults
+
+**Supported Providers (MVP):**
+- `openai`: OpenAI GPT models
+  - Models: `gpt-4-turbo-preview`, `gpt-4`, `gpt-4-mini`, `gpt-3.5-turbo`
+
+**Future Providers:**
+- `anthropic`: Claude models
+- `azure-openai`: Azure OpenAI
+- Local LLMs (Ollama, LM Studio)
+
+## How It Works
+
+1. **Change Detection**: Forge identifies files changed since the base branch
+2. **File Filtering**: Only source files matching your configuration are processed
+3. **Test Generation**: AI generates pytest tests for public functions/classes
+4. **Test Execution**: Tests are run locally using pytest
+5. **Validation**: Submission is blocked if tests fail
+
+## Architecture
+
+```
+forge/
+├─ cli.py              # CLI interface
+├─ config.py           # Configuration management
+├─ git_ops.py          # Git operations
+├─ diff.py             # Change detection
+├─ test_service.py     # AI test generation
+├─ ai/                 # AI provider abstraction
+│  ├─ base.py          # AIProvider interface
+│  ├─ openai.py        # OpenAIProvider
+│  ├─ registry.py      # Provider registry
+│  └─ config.py        # AI config parsing
+├─ adapters/
+│  └─ python/
+│     └─ pytest_adapter.py
+└─ backend/
+   └─ app.py          # FastAPI (future)
+```
+
+## Dynamic AI Provider Switching
+
+Forge supports dynamic switching of AI providers and models without code changes:
+
+- **Configuration-based**: Set provider/model in `.gt.yml`
+- **CLI overrides**: Override settings per command
+- **Extensible**: Add new providers by implementing the `AIProvider` interface
+- **Model-agnostic**: Core logic is decoupled from specific AI providers
+
+### Adding a New Provider
+
+1. Create a new provider class inheriting from `AIProvider`
+2. Implement required methods
+3. Register in `forge/ai/registry.py`
+
+Example:
+
+```python
+from forge.ai.base import AIProvider, AIConfig
+
+class MyProvider(AIProvider):
+    def generate_tests(self, prompt: str) -> str:
+        # Implementation
+        pass
+    
+    def get_supported_models(self) -> list[str]:
+        return ["model1", "model2"]
+
+# Register
+from forge.ai.registry import register_provider
+register_provider("myprovider", MyProvider)
+```
+
+## Safety Features
+
+- ✅ Never auto-commits failing tests
+- ✅ Never modifies the base branch
+- ✅ All Git failures surface clearly
+- ✅ Respects `.gitignore`
+- ✅ Aborts on partial failures
+- ✅ API keys never stored in config files
+
+## Limitations (MVP)
+
+- Python support only
+- Local execution only
+- No automatic conflict resolution
+- No PR creation
+- No frontend/E2E test generation
+
+## Future Roadmap
+
+- FastAPI backend mode
+- TypeScript support
+- Test history persistence
+- Dashboard (read-only)
+- Merge conflict resolution
+- PR automation
+- Additional AI providers (Anthropic, Azure OpenAI, local models)
+
+## License
+
+MIT
+
