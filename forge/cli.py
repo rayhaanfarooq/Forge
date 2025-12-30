@@ -14,7 +14,7 @@ import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from forge.config import (
+from forge.core import (
     ForgeConfig,
     find_repo_root,
     load_config,
@@ -22,8 +22,6 @@ from forge.config import (
     detect_language,
     get_config_path,
     load_env_file,
-)
-from forge.git_ops import (
     is_git_repo,
     get_current_branch,
     sync_branch,
@@ -32,9 +30,15 @@ from forge.git_ops import (
     push_branch,
     is_clean_working_tree,
     run_git_command,
+    create_branch,
+    branch_exists,
+    switch_branch,
+    list_branches,
+    detect_main_branch,
+    branch_exists_local,
+    get_changed_source_files,
 )
-from forge.diff import get_changed_source_files
-from forge.test_service import TestService
+from forge.services import TestService
 from forge.adapters.python.pytest_adapter import PythonPytestAdapter
 from forge.utils.validation import (
     assert_git_repo,
@@ -44,7 +48,6 @@ from forge.utils.validation import (
     validate_branch_name,
 )
 from forge.metadata.branches import register_branch
-from forge.git_ops import create_branch, get_current_branch, branch_exists, switch_branch, list_branches, detect_main_branch, branch_exists_local, switch_branch
 from forge.database.tracker import track_test_event, ensure_repo_tracked
 
 app = typer.Typer(help="Forge - Opinionated Git workflows with AI-generated tests")

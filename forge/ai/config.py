@@ -3,7 +3,7 @@
 import os
 from typing import Optional
 from forge.ai.base import AIConfig
-from forge.config import ForgeConfig
+from forge.core.config import ForgeConfig
 
 
 def parse_ai_config(

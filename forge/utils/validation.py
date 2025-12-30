@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from typing import Optional
-from forge.git_ops import is_git_repo, run_git_command, is_clean_working_tree
+from forge.core.git_ops import is_git_repo, run_git_command, is_clean_working_tree
 
 
 def assert_git_repo(repo_root: Optional[Path] = None) -> Path:

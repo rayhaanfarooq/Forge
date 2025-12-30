@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from forge.database.models import Repository, Branch, TestEvent, get_session, init_db
-from forge.config import find_repo_root
+from forge.core.config import find_repo_root
 
 
 def track_test_event(

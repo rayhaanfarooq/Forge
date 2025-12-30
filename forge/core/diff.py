@@ -2,8 +2,8 @@
 
 from pathlib import Path
 from typing import Optional
-from forge.config import load_config, find_repo_root
-from forge.git_ops import get_changed_files_since_base
+from forge.core.config import load_config, find_repo_root
+from forge.core.git_ops import get_changed_files_since_base
 
 
 def filter_source_files(

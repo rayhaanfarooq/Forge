@@ -237,20 +237,32 @@ GOOGLE_API_KEY=your-key-here
 ```
 forge/
 ├─ cli.py              # CLI interface
-├─ config.py           # Configuration management
-├─ git_ops.py          # Git operations
-├─ diff.py             # Change detection
-├─ test_service.py     # AI test generation
+├─ core/               # Core functionality
+│  ├─ config.py        # Configuration management
+│  ├─ git_ops.py       # Git operations
+│  └─ diff.py          # Change detection
+├─ services/           # Business logic services
+│  └─ test_service.py  # AI test generation
 ├─ ai/                 # AI provider abstraction
 │  ├─ base.py          # AIProvider interface
+│  ├─ config.py        # AI configuration parsing
 │  ├─ openai.py        # OpenAIProvider
 │  ├─ gemini.py        # GeminiProvider
 │  └─ registry.py      # Provider registry
-├─ adapters/
+├─ adapters/           # Language/framework adapters
 │  └─ python/
 │     └─ pytest_adapter.py
-└─ backend/
-   └─ app.py          # FastAPI (for future dashboard)
+├─ database/           # Database models and utilities
+│  ├─ models.py        # SQLAlchemy models
+│  ├─ scanner.py       # Repository scanning
+│  └─ tracker.py       # Event tracking
+├─ backend/            # FastAPI backend
+│  └─ app.py           # API endpoints
+├─ utils/              # Utility functions
+│  ├─ ast_parser.py    # AST parsing for Python
+│  └─ validation.py    # Input validation
+└─ metadata/           # Metadata management
+   └─ branches.py      # Branch metadata
 ```
 
 ## Safety Features

@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 from forge.adapters.base import LanguageAdapter
-from forge.diff import filter_source_files
+from forge.core.diff import filter_source_files
 
 
 class PythonPytestAdapter(LanguageAdapter):
@@ -22,7 +22,7 @@ class PythonPytestAdapter(LanguageAdapter):
         base_branch: str,
     ) -> list[str]:
         """Get changed Python files"""
-        from forge.git_ops import get_changed_files_since_base
+        from forge.core.git_ops import get_changed_files_since_base
         
         changed_files = get_changed_files_since_base(base_branch, repo_root)
         

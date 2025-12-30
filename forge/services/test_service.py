@@ -5,7 +5,7 @@ from typing import Optional, List
 from forge.ai.base import AIProvider, AIConfig
 from forge.ai.registry import resolve_provider
 from forge.ai.config import parse_ai_config
-from forge.config import ForgeConfig
+from forge.core.config import ForgeConfig
 from forge.utils.ast_parser import (
     get_untested_functions_with_info,
     extract_code_for_functions,
@@ -37,7 +37,7 @@ class TestService:
         """
         # Parse AI configuration with overrides
         if forge_config is None:
-            from forge.config import load_config, find_repo_root, load_env_file
+            from forge.core.config import load_config, find_repo_root, load_env_file
             try:
                 repo_root = find_repo_root()
                 if repo_root:
@@ -52,7 +52,7 @@ class TestService:
         else:
             # If forge_config is provided, we still need to load .env file
             # for API keys (forge_config doesn't contain API keys for security)
-            from forge.config import find_repo_root, load_env_file
+            from forge.core.config import find_repo_root, load_env_file
             repo_root = find_repo_root()
             if repo_root:
                 load_env_file(repo_root)

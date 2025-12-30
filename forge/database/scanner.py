@@ -6,7 +6,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from forge.database.models import Repository, Branch, Commit, get_session, init_db
-from forge.git_ops import (
+from forge.core.git_ops import (
     get_current_branch,
     list_branches,
     detect_main_branch,
