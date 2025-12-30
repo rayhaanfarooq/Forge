@@ -2,7 +2,51 @@
 
 **Opinionated Git workflows with AI-generated tests**
 
-Forge is a local-first developer platform that simplifies Git branch workflows and automates test generation using AI.
+Forge eliminates Git workflow friction by combining opinionated branching, automatic rebasing, and AI-generated tests — so developers ship faster with confidence. Built as a local-first developer platform, Forge simplifies Git branch workflows and automates test generation using AI without requiring cloud infrastructure or CI/CD overhead.
+
+## Why Forge Exists
+
+Forge was born from working as an intern in high-velocity environments at **Ross Video** and **Shopify**, where shipping at lightning speeds is the norm. The only way to maintain that pace while ensuring code quality is to eliminate the friction points that slow developers down:
+
+- **Merge conflicts and rebasing** that break flow and require manual resolution
+- **Forgotten or skipped tests** that lead to production bugs
+- **Broken branches** that block deployments and waste hours
+
+Forge addresses these pain points by automating the entire workflow: branch management, rebasing, test generation, and validation — all running locally so you stay in control and move fast. I hated rebasing and making tests so I automated the process.
+
+## Who Forge Is For
+
+Forge is designed for:
+
+- Solo developers who want guardrails without heavy CI overhead
+- Teams that enforce clean Git histories and test-first workflows
+- Hackathon and startup environments where speed + correctness matter
+- Developers tired of manually rebasing, writing boilerplate tests, and fixing broken branches
+
+## Why Not Just Use Git + Copilot?
+
+**Before Forge**
+
+- Manually create branches
+- Manually rebase and resolve conflicts
+- Write tests after the fact (or skip them)
+- Forget to push or push broken tests
+
+**With Forge**
+
+- One command handles rebase + tests + validation
+- Tests are generated based on actual diffs
+- Branches stay clean and in sync
+- Safer commits by default
+
+## Non-Goals
+
+Forge intentionally does NOT:
+
+- Replace Git or GitHub
+- Auto-merge PRs
+- Run in CI/CD (local-first by design)
+- Modify production or base branches automatically
 
 ## Quick Start
 
@@ -211,7 +255,3 @@ forge/
 - ✅ Respects `.gitignore`
 - ✅ Aborts on partial failures
 - ✅ API keys never stored in config files
-
-## License
-
-MIT
