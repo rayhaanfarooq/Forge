@@ -35,14 +35,23 @@ Or install in development mode:
 pip install -e .
 ```
 
-3. Set up your AI provider API key:
+3. Set up your AI provider API key in a `.env` file in your repository root:
 
 ```bash
-# For OpenAI
-export OPENAI_API_KEY="your-api-key-here"
+# Option 1: Using .env file (recommended)
+# Create a .env file in your repo root:
+FORGE_PROVIDER=gemini  # or openai, anthropic
+GOOGLE_API_KEY=your-api-key-here  # for Gemini
+# OR
+# OPENAI_API_KEY=your-api-key-here  # for OpenAI
+# ANTHROPIC_API_KEY=your-api-key-here  # for Anthropic
 
+# Option 2: Using environment variables
+export OPENAI_API_KEY="your-api-key-here"
 # Or for Anthropic
 export ANTHROPIC_API_KEY="your-api-key-here"
+# Or for Gemini
+export GOOGLE_API_KEY="your-api-key-here"
 ```
 
 ## Usage
@@ -181,8 +190,22 @@ You can configure the AI provider and model in `.gt.yml`. CLI flags override the
 **Priority order:**
 1. CLI flags (highest priority)
 2. `.gt.yml` configuration
-3. Environment variables (`FORGE_AI_PROVIDER`)
+3. Environment variables (`FORGE_PROVIDER` or `FORGE_AI_PROVIDER` from `.env` file)
 4. Defaults
+
+**Using `.env` file:**
+You can set the default provider in your `.env` file:
+```bash
+FORGE_PROVIDER=gemini
+GOOGLE_API_KEY=your-api-key-here
+```
+
+Then simply run:
+```bash
+forge create-tests
+```
+
+No need to specify `--provider gemini` every time!
 
 **Supported Providers (MVP):**
 - `openai`: OpenAI GPT models

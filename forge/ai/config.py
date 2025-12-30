@@ -19,7 +19,8 @@ def parse_ai_config(
     Priority order:
     1. CLI flags (highest)
     2. .gt.yml configuration
-    3. Defaults
+    3. Environment variables (FORGE_PROVIDER or FORGE_AI_PROVIDER)
+    4. Defaults
     
     Args:
         forge_config: Forge configuration from .gt.yml
@@ -34,11 +35,14 @@ def parse_ai_config(
     # Get AI config from forge_config (if present)
     ai_config_dict = getattr(forge_config, "ai", None) or {}
     
-    # Resolve provider (CLI > config > default)
+    # Resolve provider (CLI > config > env var > default)
+    # Support both FORGE_PROVIDER and FORGE_AI_PROVIDER for convenience
     provider = (
         provider_override
         or ai_config_dict.get("provider")
-        or os.getenv("FORGE_AI_PROVIDER", "openai")
+        or os.getenv("FORGE_PROVIDER")
+        or os.getenv("FORGE_AI_PROVIDER")
+        or "openai"
     )
     
     # Resolve model (CLI > config > default)
