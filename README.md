@@ -48,6 +48,12 @@ Forge intentionally does NOT:
 - Run in CI/CD (local-first by design)
 - Modify production or base branches automatically
 
+## Requirements
+
+- Python 3.10+
+- Git 2.30+
+- macOS / Linux (Windows via WSL supported)
+
 ## Quick Start
 
 1. **Install dependencies:**
