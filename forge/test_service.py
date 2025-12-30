@@ -1,11 +1,15 @@
 """Test generation service using AI"""
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from forge.ai.base import AIProvider, AIConfig
 from forge.ai.registry import resolve_provider
 from forge.ai.config import parse_ai_config
 from forge.config import ForgeConfig
+from forge.utils.ast_parser import (
+    get_untested_functions_with_info,
+    extract_code_for_functions,
+)
 
 
 class TestService:
@@ -74,6 +78,8 @@ class TestService:
         file_path: str,
         code: str,
         test_file_path: Path,
+        existing_test_code: Optional[str] = None,
+        incremental: bool = False,
     ) -> str:
         """
         Generate pytest tests for a Python file
@@ -82,11 +88,30 @@ class TestService:
             file_path: Path to source file
             code: Source code content
             test_file_path: Path where test file should be written
+            existing_test_code: Existing test file content (for incremental updates)
+            incremental: If True, only generate tests for untested functions
         
         Returns:
             Generated test code
         """
-        prompt = self._build_prompt(file_path, code)
+        if incremental and existing_test_code:
+            # Find untested functions
+            untested_funcs = get_untested_functions_with_info(code, existing_test_code)
+            if not untested_funcs:
+                # All functions already tested, return empty string
+                return ""
+            
+            # Extract code for only untested functions
+            function_names = [f.name for f in untested_funcs]
+            function_code = extract_code_for_functions(code, function_names)
+            
+            if not function_code or not function_code.strip():
+                return ""
+            
+            prompt = self._build_prompt_for_functions(file_path, function_code, function_names)
+        else:
+            prompt = self._build_prompt(file_path, code)
+        
         return self.provider.generate_tests(prompt)
     
     def _build_prompt(self, file_path: str, code: str) -> str:
@@ -110,4 +135,25 @@ File: {file_path}
 ```
 
 Generate only the test code, without any explanations or markdown formatting."""
+    
+    def _build_prompt_for_functions(self, file_path: str, function_code: str, function_names: List[str]) -> str:
+        """Build the prompt for generating tests for specific functions only"""
+        func_list = ", ".join(function_names)
+        return f"""Generate pytest tests for the following functions from {file_path}.
+
+Functions to test: {func_list}
+
+Rules:
+- Only test the specified functions (do not generate tests for functions not shown)
+- Do not invent imports - only use imports that are actually in the file or standard library
+- Use pytest
+- Keep tests minimal and readable
+- Import the module/function being tested correctly based on the file path
+- Focus on testing the public API of these specific functions
+
+```python
+{function_code}
+```
+
+Generate only the test code for these functions, without any explanations or markdown formatting."""
 

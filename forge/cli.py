@@ -44,6 +44,38 @@ app = typer.Typer(help="Forge - Opinionated Git workflows with AI-generated test
 console = Console()
 
 
+def merge_tests(existing_test_code: str, new_test_code: str) -> str:
+    """
+    Merge new test code with existing test code.
+    
+    Appends new tests to the end of existing tests, preserving imports.
+    
+    Args:
+        existing_test_code: Existing test file content
+        new_test_code: New test code to add
+        
+    Returns:
+        Merged test code
+    """
+    # Strip whitespace from both
+    existing = existing_test_code.strip()
+    new = new_test_code.strip()
+    
+    if not existing:
+        return new
+    
+    if not new:
+        return existing
+    
+    # Check if there's a trailing newline in existing code
+    if not existing.endswith('\n'):
+        existing += '\n\n'
+    else:
+        existing = existing.rstrip() + '\n\n'
+    
+    return existing + new
+
+
 def strip_markdown_code_fences(code: str) -> str:
     """Remove markdown code fences (```python, ```py, ```) from the start and end of code"""
     code = code.strip()
@@ -430,27 +462,54 @@ def create_tests(
                 # Get test file path
                 test_file_path = adapter.get_test_file_path(file_path, test_dir)
                 
-                # Generate tests
+                # Check if test file exists for incremental updates
+                existing_test_code = None
+                test_existed = test_file_path.exists()
+                if test_existed and update:
+                    existing_test_code = test_file_path.read_text()
+                
+                # Generate tests (incremental if updating existing tests)
                 test_code = test_service.generate_tests_for_file(
                     file_path,
                     code,
                     test_file_path,
+                    existing_test_code=existing_test_code,
+                    incremental=(update and test_existed),
                 )
                 
                 # Strip markdown code fences if present
                 test_code = strip_markdown_code_fences(test_code)
                 
-                # Write test file
-                test_file_path.parent.mkdir(parents=True, exist_ok=True)
-                test_existed = test_file_path.exists()
-                test_file_path.write_text(test_code)
-                
-                if test_existed:
-                    updated_tests.append(str(test_file_path))
-                    progress.update(task, description=f"✓ Updated tests for {file_path}")
+                # Handle writing test file based on update mode
+                if update and test_existed:
+                    if test_code:
+                        # Merge new tests with existing tests
+                        merged_test_code = merge_tests(existing_test_code, test_code)
+                        test_file_path.write_text(merged_test_code)
+                        updated_tests.append(str(test_file_path))
+                        progress.update(task, description=f"✓ Updated tests for {file_path}")
+                    else:
+                        # No new tests generated (all functions already tested)
+                        progress.update(task, description=f"✓ No new tests needed for {file_path}")
+                        progress.remove_task(task)
+                        continue
+                elif test_code:
+                    # New test file or full regeneration (when update=False or test doesn't exist)
+                    test_file_path.parent.mkdir(parents=True, exist_ok=True)
+                    test_file_path.write_text(test_code)
+                    if test_existed:
+                        updated_tests.append(str(test_file_path))
+                        progress.update(task, description=f"✓ Updated tests for {file_path}")
+                    else:
+                        generated_tests.append(str(test_file_path))
+                        progress.update(task, description=f"✓ Generated tests for {file_path}")
                 else:
-                    generated_tests.append(str(test_file_path))
-                    progress.update(task, description=f"✓ Generated tests for {file_path}")
+                    # No test code generated and not updating existing - should not happen
+                    console.print(f"[yellow]Warning: No test code generated for {file_path}[/yellow]")
+                    progress.remove_task(task)
+                    continue
+                
+                progress.remove_task(task)
                 
             except Exception as e:
                 console.print(f"[red]Error generating tests for {file_path}: {e}[/red]")
