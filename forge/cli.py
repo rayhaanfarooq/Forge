@@ -39,6 +39,7 @@ from forge.utils.validation import (
 )
 from forge.metadata.branches import register_branch
 from forge.git_ops import create_branch, get_current_branch, branch_exists, switch_branch, list_branches, detect_main_branch, branch_exists_local, switch_branch
+from forge.database.tracker import track_test_event, ensure_repo_tracked
 
 app = typer.Typer(help="Forge - Opinionated Git workflows with AI-generated tests")
 console = Console()
@@ -528,6 +529,21 @@ def create_tests(
         console.print(f"[green]✓ Generated {len(generated_tests)} new test file(s)[/green]")
     if updated_tests:
         console.print(f"[green]✓ Updated {len(updated_tests)} existing test file(s)[/green]")
+    
+    # Track test generation event
+    try:
+        ensure_repo_tracked(repo_root)
+        current_branch = get_current_branch(repo_root)
+        track_test_event(
+            command_used="create-tests",
+            status="success" if not failed_files else "failure",
+            ai_provider=test_service.config.provider,
+            model=test_service.config.model,
+            repo_path=repo_root,
+            branch_name=current_branch,
+        )
+    except Exception:
+        pass  # Don't fail if tracking fails
 
 
 @app.command()
@@ -618,6 +634,8 @@ def submit(
         raise typer.Exit(1)
     
     # Step 2: Create and run tests
+    test_service = None
+    changed_files = []
     if not skip_tests:
         console.print("\n[bold]Step 2: Creating and running tests...[/bold]")
         try:
@@ -674,6 +692,19 @@ def submit(
                 success = adapter.run_tests(repo_root, test_dir)
                 if not success:
                     console.print("[red]✗ Tests failed. Aborting submission.[/red]")
+                    # Track failure
+                    try:
+                        ensure_repo_tracked(repo_root)
+                        track_test_event(
+                            command_used="submit",
+                            status="failure",
+                            ai_provider=test_service.config.provider,
+                            model=test_service.config.model,
+                            repo_path=repo_root,
+                            branch_name=current_branch,
+                        )
+                    except Exception:
+                        pass
                     raise typer.Exit(1)
                 console.print("[green]✓ All tests passed[/green]")
             else:
@@ -710,6 +741,145 @@ def submit(
     
     console.print(f"\n[bold green]✓ Submission complete![/bold green]")
     console.print(f"Branch {current_branch} is ready for review.")
+    
+    # Track successful submission
+    try:
+        ensure_repo_tracked(repo_root)
+        provider = None
+        model = None
+        if not skip_tests and test_service and changed_files:
+            provider = test_service.config.provider
+            model = test_service.config.model
+        track_test_event(
+            command_used="submit",
+            status="success",
+            ai_provider=provider,
+            model=model,
+            repo_path=repo_root,
+            branch_name=current_branch,
+        )
+    except Exception:
+        pass  # Don't fail if tracking fails
+
+
+@app.command()
+def run(
+    port: int = typer.Option(8000, help="Backend port"),
+    frontend_port: int = typer.Option(5173, help="Frontend dev server port"),
+    open_browser: bool = typer.Option(True, help="Open browser automatically"),
+):
+    """Start Forge dashboard (backend + frontend)"""
+    import subprocess
+    import signal
+    import sys
+    import time
+    import webbrowser
+    import threading
+    
+    repo_root = find_repo_root()
+    if repo_root is None:
+        repo_root = Path.cwd()
+    
+    # Find frontend directory
+    frontend_dir = repo_root.parent / "Forge" / "frontend"
+    if not frontend_dir.exists():
+        # Try current directory structure
+        frontend_dir = repo_root / "frontend"
+    
+    if not frontend_dir.exists():
+        console.print("[red]Error: Frontend directory not found[/red]")
+        console.print(f"Expected: {frontend_dir}")
+        console.print("Please ensure the frontend directory exists.")
+        raise typer.Exit(1)
+    
+    backend_process = None
+    frontend_process = None
+    
+    def cleanup():
+        """Kill both processes on exit"""
+        if backend_process:
+            try:
+                backend_process.terminate()
+                backend_process.wait(timeout=5)
+            except Exception:
+                backend_process.kill()
+        if frontend_process:
+            try:
+                frontend_process.terminate()
+                frontend_process.wait(timeout=5)
+            except Exception:
+                frontend_process.kill()
+    
+    def signal_handler(sig, frame):
+        console.print("\n[yellow]Shutting down...[/yellow]")
+        cleanup()
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    try:
+        # Initialize database
+        from forge.database.models import init_db
+        init_db()
+        
+        # Start FastAPI backend
+        console.print(f"[cyan]Starting FastAPI backend on port {port}...[/cyan]")
+        backend_process = subprocess.Popen(
+            ["uvicorn", "forge.backend.app:app", "--reload", "--port", str(port)],
+            cwd=repo_root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        
+        # Start React frontend
+        console.print(f"[cyan]Starting React frontend on port {frontend_port}...[/cyan]")
+        # Check if node_modules exists, if not, install dependencies
+        if not (frontend_dir / "node_modules").exists():
+            console.print("[yellow]Installing frontend dependencies...[/yellow]")
+            install_process = subprocess.run(
+                ["npm", "install"],
+                cwd=frontend_dir,
+                capture_output=True,
+            )
+            if install_process.returncode != 0:
+                console.print("[red]Failed to install frontend dependencies[/red]")
+                console.print(install_process.stderr.decode())
+                raise typer.Exit(1)
+        
+        frontend_process = subprocess.Popen(
+            ["npm", "run", "dev", "--", "--port", str(frontend_port)],
+            cwd=frontend_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        
+        # Wait a bit for servers to start
+        time.sleep(3)
+        
+        # Open browser
+        if open_browser:
+            def open_browser_delayed():
+                time.sleep(2)
+                webbrowser.open(f"http://localhost:{frontend_port}")
+            
+            threading.Thread(target=open_browser_delayed, daemon=True).start()
+        
+        console.print(f"[green]✓ Dashboard running![/green]")
+        console.print(f"  Backend: http://localhost:{port}")
+        console.print(f"  Frontend: http://localhost:{frontend_port}")
+        console.print(f"\n[yellow]Press Ctrl+C to stop[/yellow]")
+        
+        # Wait for processes
+        backend_process.wait()
+        frontend_process.wait()
+        
+    except KeyboardInterrupt:
+        cleanup()
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        cleanup()
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":
