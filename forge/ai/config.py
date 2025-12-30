@@ -18,12 +18,12 @@ def parse_ai_config(
     
     Priority order:
     1. CLI flags (highest)
-    2. .gt.yml configuration
+    2. .fg.yml configuration
     3. Environment variables (FORGE_PROVIDER or FORGE_AI_PROVIDER)
     4. Defaults
     
     Args:
-        forge_config: Forge configuration from .gt.yml
+        forge_config: Forge configuration from .fg.yml
         provider_override: CLI provider override
         model_override: CLI model override
         temperature_override: CLI temperature override

@@ -140,7 +140,7 @@ def get_changed_files_since_base(
             raise RuntimeError(
                 f"Base branch '{base_branch}' does not exist.\n"
                 f"Available branches: {', '.join(available_branches) if available_branches else 'none'}\n"
-                f"Use 'forge switch <branch>' to switch branches or update base_branch in .gt.yml"
+                f"Use 'forge switch <branch>' to switch branches or update base_branch in .fg.yml"
             )
         except RuntimeError as e:
             if "does not exist" in str(e):
@@ -148,7 +148,7 @@ def get_changed_files_since_base(
             # If branch listing fails, just raise the original error
             raise RuntimeError(
                 f"Base branch '{base_branch}' does not exist. "
-                f"Use 'forge switch <branch>' to switch branches or update base_branch in .gt.yml"
+                f"Use 'forge switch <branch>' to switch branches or update base_branch in .fg.yml"
             )
     
     # If we're on the base branch, check for uncommitted changes instead

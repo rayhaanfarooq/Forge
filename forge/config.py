@@ -14,7 +14,7 @@ except ImportError:
 
 
 class AIConfigSection(BaseModel):
-    """AI configuration section in .gt.yml"""
+    """AI configuration section in .fg.yml"""
     provider: Optional[str] = None
     model: Optional[str] = None
     temperature: Optional[float] = None
@@ -32,7 +32,7 @@ class ForgeConfig(BaseModel):
     ai: Optional[Dict[str, Any]] = None  # AI configuration section
 
 
-CONFIG_FILE = ".gt.yml"
+CONFIG_FILE = ".fg.yml"
 
 
 def find_repo_root(start_path: Optional[Path] = None) -> Optional[Path]:
@@ -61,12 +61,12 @@ def get_config_path(repo_root: Optional[Path] = None) -> Path:
 
 
 def load_config(repo_root: Optional[Path] = None) -> ForgeConfig:
-    """Load Forge configuration from .gt.yml"""
+    """Load Forge configuration from .fg.yml"""
     config_path = get_config_path(repo_root)
     
     if not config_path.exists():
         raise FileNotFoundError(
-            f"Forge not initialized. Run 'fg init' first. "
+            f"Forge not initialized. Run 'forge init' first. "
             f"Expected config at {config_path}"
         )
     
@@ -82,7 +82,7 @@ def load_config(repo_root: Optional[Path] = None) -> ForgeConfig:
 
 
 def save_config(config: ForgeConfig, repo_root: Optional[Path] = None) -> None:
-    """Save Forge configuration to .gt.yml"""
+    """Save Forge configuration to .fg.yml"""
     config_path = get_config_path(repo_root)
     
     config_dict = config.model_dump()

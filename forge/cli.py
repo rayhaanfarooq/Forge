@@ -195,14 +195,14 @@ def branch(
             
             if not branches:
                 console.print("[yellow]No branches found[/yellow]")
-                raise typer.Exit(0)
+                return
             
             console.print("[cyan]Available branches:[/cyan]")
             for branch in branches:
                 marker = "[green]*[/green]" if branch == current_branch else " "
                 console.print(f"{marker} {branch}")
             
-            raise typer.Exit(0)
+            return
         except Exception as e:
             console.print(f"[red]Error listing branches: {e}[/red]")
             raise typer.Exit(1)

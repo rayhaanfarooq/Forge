@@ -66,7 +66,7 @@ forge init
 
 This will:
 - Detect your repository language (Python in MVP)
-- Create a `.gt.yml` configuration file
+- Create a `.fg.yml` configuration file
 - Set up the test directory structure
 
 ### Workflow
@@ -160,7 +160,7 @@ forge submit --provider openai --model gpt-4o-mini
 
 ## Configuration
 
-Forge uses a `.gt.yml` file in your repository root:
+Forge uses a `.fg.yml` file in your repository root:
 
 ```yaml
 base_branch: main
@@ -183,13 +183,11 @@ ai:
 
 ### AI Provider Configuration
 
-You can configure the AI provider and model in `.gt.yml`. CLI flags override these settings for that command invocation.
-
-**Note:** The config file is still named `.gt.yml` for backward compatibility.
+You can configure the AI provider and model in `.fg.yml`. CLI flags override these settings for that command invocation.
 
 **Priority order:**
 1. CLI flags (highest priority)
-2. `.gt.yml` configuration
+2. `.fg.yml` configuration
 3. Environment variables (`FORGE_PROVIDER` or `FORGE_AI_PROVIDER` from `.env` file)
 4. Defaults
 
@@ -249,7 +247,7 @@ forge/
 
 Forge supports dynamic switching of AI providers and models without code changes:
 
-- **Configuration-based**: Set provider/model in `.gt.yml`
+- **Configuration-based**: Set provider/model in `.fg.yml`
 - **CLI overrides**: Override settings per command
 - **Extensible**: Add new providers by implementing the `AIProvider` interface
 - **Model-agnostic**: Core logic is decoupled from specific AI providers
