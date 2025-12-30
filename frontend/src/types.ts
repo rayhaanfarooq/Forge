@@ -48,3 +48,14 @@ export interface BranchMetrics {
   has_generated_tests: boolean;
 }
 
+export interface Stats {
+  total_repos: number;
+  total_branches: number;
+  total_commits: number;
+  total_test_events: number;
+  successful_tests: number;
+  failed_tests: number;
+  active_branches: number;
+  recent_activity: number;
+}
+

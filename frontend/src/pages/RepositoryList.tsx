@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getRepos, addRepo } from '../utils/api';
-import type { Repository } from '../types';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getRepos, addRepo } from "../utils/api";
+import type { Repository } from "../types";
 
 export default function RepositoryList() {
   const [repos, setRepos] = useState<Repository[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newRepoPath, setNewRepoPath] = useState('');
+  const [newRepoPath, setNewRepoPath] = useState("");
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -21,7 +21,9 @@ export default function RepositoryList() {
       const data = await getRepos();
       setRepos(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load repositories');
+      setError(
+        err instanceof Error ? err.message : "Failed to load repositories"
+      );
     } finally {
       setLoading(false);
     }
@@ -32,27 +34,27 @@ export default function RepositoryList() {
     setError(null);
     try {
       await addRepo(newRepoPath);
-      setNewRepoPath('');
+      setNewRepoPath("");
       setShowAddForm(false);
       loadRepos();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add repository');
+      setError(err instanceof Error ? err.message : "Failed to add repository");
     }
   }
 
   if (loading) {
-    return <div className="card">Loading repositories...</div>;
+    return <div className="loading">Loading repositories...</div>;
   }
 
   return (
     <div>
       <div className="card">
-        <h2>Repositories</h2>
-        {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
-        
+        <h2>📦 Repositories</h2>
+        {error && <div className="error">{error}</div>}
+
         {!showAddForm ? (
-          <button className="btn" onClick={() => setShowAddForm(true)}>
-            Add Repository
+          <button className="btn btn-icon" onClick={() => setShowAddForm(true)}>
+            <span>+</span> Add Repository
           </button>
         ) : (
           <form onSubmit={handleAddRepo}>
@@ -64,13 +66,15 @@ export default function RepositoryList() {
               onChange={(e) => setNewRepoPath(e.target.value)}
               required
             />
-            <button type="submit" className="btn">Add</button>
+            <button type="submit" className="btn">
+              Add
+            </button>
             <button
               type="button"
               className="btn btn-secondary"
               onClick={() => {
                 setShowAddForm(false);
-                setNewRepoPath('');
+                setNewRepoPath("");
               }}
             >
               Cancel
@@ -79,28 +83,41 @@ export default function RepositoryList() {
         )}
 
         {repos.length === 0 ? (
-          <p style={{ marginTop: '20px', color: '#666' }}>No repositories tracked yet.</p>
+          <div className="empty-state">
+            <div className="empty-state-icon">📁</div>
+            <div className="empty-state-title">No repositories tracked yet</div>
+            <div className="empty-state-text">
+              Add a repository to start tracking your projects
+            </div>
+          </div>
         ) : (
-          <ul className="list" style={{ marginTop: '20px' }}>
+          <div style={{ marginTop: "20px" }}>
             {repos.map((repo) => (
-              <li
+              <div
                 key={repo.id}
-                className="list-item"
+                className="repo-card"
                 onClick={() => navigate(`/repos/${repo.id}`)}
               >
-                <div style={{ fontWeight: '500' }}>{repo.name}</div>
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                  {repo.local_path}
+                <div className="repo-card-header">
+                  <div>
+                    <div className="repo-card-name">{repo.name}</div>
+                    <div className="repo-card-path">{repo.local_path}</div>
+                  </div>
                 </div>
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                  Base: {repo.base_branch} | Last scanned: {repo.last_scanned_at ? new Date(repo.last_scanned_at).toLocaleString() : 'Never'}
+                <div className="repo-card-meta">
+                  <span>Base: {repo.base_branch}</span>
+                  <span>
+                    Last scanned:{" "}
+                    {repo.last_scanned_at
+                      ? new Date(repo.last_scanned_at).toLocaleString()
+                      : "Never"}
+                  </span>
                 </div>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>
   );
 }
-

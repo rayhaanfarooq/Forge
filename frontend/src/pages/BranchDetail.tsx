@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { getBranchCommits, getBranchMetrics } from '../utils/api';
-import type { Commit, BranchMetrics } from '../types';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { getBranchCommits, getBranchMetrics } from "../utils/api";
+import type { Commit, BranchMetrics } from "../types";
 
 export default function BranchDetail() {
   const { branchId } = useParams<{ branchId: string }>();
@@ -27,27 +27,27 @@ export default function BranchDetail() {
       setCommits(commitsData);
       setMetrics(metricsData);
     } catch (err) {
-      console.error('Failed to load data:', err);
+      console.error("Failed to load data:", err);
     } finally {
       setLoading(false);
     }
   }
 
   if (loading) {
-    return <div className="card">Loading...</div>;
+    return <div className="loading">Loading...</div>;
   }
 
   return (
     <div>
       <div className="card">
         <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-          Back
+          ← Back
         </button>
       </div>
 
       {metrics && (
         <div className="card">
-          <h2>Metrics</h2>
+          <h2>📊 Metrics</h2>
           <div className="metrics">
             <div className="metric">
               <div className="metric-label">Commits Behind Base</div>
@@ -58,13 +58,17 @@ export default function BranchDetail() {
               <div className="metric-value">
                 {metrics.days_since_last_sync !== null
                   ? metrics.days_since_last_sync.toFixed(1)
-                  : 'N/A'}
+                  : "N/A"}
               </div>
             </div>
             <div className="metric">
               <div className="metric-label">Has Generated Tests</div>
               <div className="metric-value">
-                {metrics.has_generated_tests ? 'Yes' : 'No'}
+                {metrics.has_generated_tests ? (
+                  <span className="badge badge-success">Yes</span>
+                ) : (
+                  <span className="badge badge-warning">No</span>
+                )}
               </div>
             </div>
           </div>
@@ -72,28 +76,45 @@ export default function BranchDetail() {
       )}
 
       <div className="card">
-        <h2>Commits ({commits.length})</h2>
+        <h2>💻 Commits ({commits.length})</h2>
         {commits.length === 0 ? (
-          <p style={{ color: '#666' }}>No commits found.</p>
+          <div className="empty-state">
+            <div className="empty-state-icon">📝</div>
+            <div className="empty-state-title">No commits found</div>
+            <div className="empty-state-text">
+              Commits will appear here once the repository is scanned
+            </div>
+          </div>
         ) : (
-          <ul className="list" style={{ marginTop: '15px' }}>
+          <div style={{ marginTop: "20px" }}>
             {commits.map((commit) => (
-              <li key={commit.id} className="list-item">
-                <div style={{ fontWeight: '500' }}>
-                  {commit.message}
+              <div key={commit.id} className="list-item">
+                <div className="list-item-title">{commit.message}</div>
+                <div className="list-item-subtitle">
+                  <span style={{ fontFamily: "monospace" }}>
+                    {commit.commit_hash.substring(0, 8)}
+                  </span>
+                  {" by "}
+                  <strong>{commit.author}</strong>
+                  {" • "}
+                  {new Date(commit.timestamp).toLocaleString()}
                 </div>
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                  {commit.commit_hash.substring(0, 8)} by {commit.author} | {new Date(commit.timestamp).toLocaleString()}
+                <div className="list-item-subtitle">
+                  {commit.files_changed_count} files changed •
+                  <span style={{ color: "var(--success)" }}>
+                    {" "}
+                    +{commit.lines_added}
+                  </span>
+                  {" / "}
+                  <span style={{ color: "var(--danger)" }}>
+                    -{commit.lines_removed}
+                  </span>
                 </div>
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                  {commit.files_changed_count} files | +{commit.lines_added} / -{commit.lines_removed}
-                </div>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>
   );
 }
-

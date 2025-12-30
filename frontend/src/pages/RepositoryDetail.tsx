@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { getRepoBranches, scanRepo, getRepos } from '../utils/api';
-import type { Branch, Repository } from '../types';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { getRepoBranches, scanRepo, getRepos } from "../utils/api";
+import type { Branch, Repository } from "../types";
 
 export default function RepositoryDetail() {
   const { repoId } = useParams<{ repoId: string }>();
@@ -29,7 +29,7 @@ export default function RepositoryDetail() {
       setRepo(foundRepo || null);
       setBranches(branchesData);
     } catch (err) {
-      console.error('Failed to load data:', err);
+      console.error("Failed to load data:", err);
     } finally {
       setLoading(false);
     }
@@ -42,58 +42,101 @@ export default function RepositoryDetail() {
       await scanRepo(parseInt(repoId));
       loadData();
     } catch (err) {
-      console.error('Failed to scan:', err);
+      console.error("Failed to scan:", err);
     } finally {
       setScanning(false);
     }
   }
 
   if (loading) {
-    return <div className="card">Loading...</div>;
+    return <div className="loading">Loading...</div>;
   }
 
   if (!repo) {
-    return <div className="card">Repository not found</div>;
+    return (
+      <div className="card">
+        <div className="empty-state">
+          <div className="empty-state-icon">❌</div>
+          <div className="empty-state-title">Repository not found</div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div>
       <div className="card">
-        <h2>{repo.name}</h2>
-        <p style={{ color: '#666', marginBottom: '15px' }}>{repo.local_path}</p>
-        <button className="btn" onClick={handleScan} disabled={scanning}>
-          {scanning ? 'Scanning...' : 'Scan Repository'}
-        </button>
-        <button className="btn btn-secondary" onClick={() => navigate('/')}>
-          Back
-        </button>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "20px",
+          }}
+        >
+          <div>
+            <h2 style={{ marginBottom: "8px" }}>📦 {repo.name}</h2>
+            <div className="repo-card-path">{repo.local_path}</div>
+          </div>
+          <button
+            className="btn btn-secondary"
+            onClick={() => navigate("/repos")}
+          >
+            ← Back
+          </button>
+        </div>
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <button
+            className="btn btn-icon"
+            onClick={handleScan}
+            disabled={scanning}
+          >
+            {scanning ? "⏳ Scanning..." : "🔄 Scan Repository"}
+          </button>
+        </div>
       </div>
 
       <div className="card">
-        <h2>Branches ({branches.length})</h2>
+        <h2>🌿 Branches ({branches.length})</h2>
         {branches.length === 0 ? (
-          <p style={{ color: '#666' }}>No branches found.</p>
+          <div className="empty-state">
+            <div className="empty-state-icon">🌿</div>
+            <div className="empty-state-title">No branches found</div>
+            <div className="empty-state-text">
+              Scan the repository to discover branches
+            </div>
+          </div>
         ) : (
-          <ul className="list" style={{ marginTop: '15px' }}>
+          <div style={{ marginTop: "20px" }}>
             {branches.map((branch) => (
-              <li
+              <div
                 key={branch.id}
-                className="list-item"
+                className="branch-card"
                 onClick={() => navigate(`/branches/${branch.id}`)}
               >
-                <div style={{ fontWeight: '500' }}>{branch.branch_name}</div>
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                  Status: <span className={`badge badge-${branch.status === 'active' ? 'success' : 'warning'}`}>
+                <div className="list-item-title">
+                  {branch.branch_name}
+                  <span
+                    className={`badge badge-${
+                      branch.status === "active" ? "success" : "warning"
+                    }`}
+                  >
                     {branch.status}
                   </span>
-                  {branch.parent_branch && ` | Parent: ${branch.parent_branch}`}
                 </div>
-              </li>
+                <div className="list-item-subtitle">
+                  {branch.parent_branch && `Parent: ${branch.parent_branch} • `}
+                  Base: {branch.base_branch}
+                  {branch.last_synced_at &&
+                    ` • Last synced: ${new Date(
+                      branch.last_synced_at
+                    ).toLocaleDateString()}`}
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>
   );
 }
-

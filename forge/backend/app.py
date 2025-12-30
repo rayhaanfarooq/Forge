@@ -233,3 +233,44 @@ def get_test_events(
 
     events = query.order_by(TestEvent.timestamp.desc()).limit(100).all()
     return events
+
+
+class StatsResponse(BaseModel):
+    total_repos: int
+    total_branches: int
+    total_commits: int
+    total_test_events: int
+    successful_tests: int
+    failed_tests: int
+    active_branches: int
+    recent_activity: int  # Events in last 7 days
+
+
+@app.get("/stats", response_model=StatsResponse)
+def get_stats(db: Session = Depends(get_db)):
+    """Get overall statistics for the dashboard"""
+    from datetime import datetime, timedelta
+    
+    total_repos = db.query(Repository).count()
+    total_branches = db.query(Branch).count()
+    total_commits = db.query(Commit).count()
+    total_test_events = db.query(TestEvent).count()
+    
+    successful_tests = db.query(TestEvent).filter_by(status="success").count()
+    failed_tests = db.query(TestEvent).filter_by(status="failure").count()
+    active_branches = db.query(Branch).filter_by(status="active").count()
+    
+    # Recent activity (last 7 days)
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    recent_activity = db.query(TestEvent).filter(TestEvent.timestamp >= seven_days_ago).count()
+    
+    return StatsResponse(
+        total_repos=total_repos,
+        total_branches=total_branches,
+        total_commits=total_commits,
+        total_test_events=total_test_events,
+        successful_tests=successful_tests,
+        failed_tests=failed_tests,
+        active_branches=active_branches,
+        recent_activity=recent_activity,
+    )
