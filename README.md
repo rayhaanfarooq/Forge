@@ -51,12 +51,13 @@ Forge intentionally does NOT:
 ## Requirements
 
 - Python 3.10+
+- Node.js 18+ (for dashboard)
 - Git 2.30+
 - macOS / Linux (Windows via WSL supported)
 
 ## Quick Start
 
-1. **Install dependencies:**
+1. **Install Forge:**
 
    ```bash
    pip install -e .
@@ -71,11 +72,18 @@ Forge intentionally does NOT:
    # OPENAI_API_KEY=your-api-key-here  # for OpenAI
    ```
 
-3. **Activate your virtual environment** (if using one):
+3. **Start the dashboard** (all-in-one setup):
 
    ```bash
-   source venv/bin/activate  # or your venv path
+   forge run
    ```
+
+   This automatically:
+
+   - Creates a virtual environment if needed
+   - Installs all dependencies (Python + Node.js)
+   - Starts the FastAPI backend and React frontend
+   - Opens the dashboard in your browser
 
 4. **Initialize Forge** in your Git repository:
 
@@ -89,6 +97,17 @@ Forge intentionally does NOT:
    ```
 
 ## Commands
+
+### `forge run`
+
+Start the Forge dashboard (FastAPI backend + React frontend). Automatically handles setup, dependency installation, and server startup.
+
+```bash
+forge run                          # Start with default ports
+forge run --port 8000 --frontend-port 5173
+forge run --skip-setup             # Skip dependency installation
+forge run --no-open-browser        # Don't open browser automatically
+```
 
 ### `forge init`
 
@@ -217,20 +236,39 @@ FORGE_PROVIDER=gemini
 GOOGLE_API_KEY=your-key-here
 ```
 
-## In Progress
+## Dashboard
 
-🚧 **Multi-Repository Tracking with SQLite Database**
+Forge includes a web-based dashboard for visualizing repository metrics and tracking test generation across multiple repositories.
 
-- SQLite database to track multiple repositories
-- Centralized metadata and test history
-- Cross-repo analytics and insights
+**Features:**
 
-🚧 **Dashboard**
+- Multi-repository tracking with SQLite database
+- Repository and branch visualization
+- Commit history and metrics
+- Test generation event tracking
+- Cross-repo analytics
 
-- Web-based dashboard for visualizing repository metrics
-- Test coverage visualization
-- Branch management interface
-- Historical test generation tracking
+**Start the dashboard:**
+
+```bash
+forge run
+```
+
+The dashboard runs on `http://localhost:5173` (frontend) with the API at `http://localhost:8000` (backend).
+
+## Language Support
+
+**Currently Supported:**
+
+- Python (pytest)
+
+**Coming Soon:**
+
+- Go (testing package)
+- Java (JUnit)
+- Ruby (RSpec)
+- TypeScript/JavaScript (Jest, Vitest)
+- More languages and frameworks
 
 ## Architecture
 
