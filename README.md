@@ -270,6 +270,19 @@ The dashboard runs on `http://localhost:5173` (frontend) with the API at `http:/
 - TypeScript/JavaScript (Jest, Vitest)
 - More languages and frameworks
 
+## AI Models Support
+
+**Currently Supported:**
+
+- Google Gemini (gemini-2.0-flash-lite, etc.)
+- OpenAI (gpt-4-turbo, gpt-4o-mini, etc.)
+
+**Coming Soon:**
+
+- Claude (Anthropic)
+- Deepseek
+- Other AI models for test generation
+
 ## Architecture
 
 ```
