@@ -2,6 +2,12 @@
 
 import os
 import sys
+import subprocess
+import signal
+import time
+import webbrowser
+import threading
+import shutil
 from pathlib import Path
 from typing import Optional
 import typer
@@ -762,36 +768,218 @@ def submit(
         pass  # Don't fail if tracking fails
 
 
+def find_forge_project_root() -> Path:
+    """Find the Forge project root (where forge/cli.py is)"""
+    # Method 1: Check if we're already in the Forge project
+    # __file__ is forge/cli.py, so parent.parent is project root
+    current_file = Path(__file__).resolve()
+    forge_project = current_file.parent.parent
+    if (forge_project / "forge" / "cli.py").exists() and (forge_project / "pyproject.toml").exists():
+        return forge_project
+    
+    # Method 2: Look for forge/cli.py in current directory or parents
+    search_path = Path.cwd()
+    while search_path != search_path.parent:
+        if (search_path / "forge" / "cli.py").exists() and (search_path / "pyproject.toml").exists():
+            return search_path
+        search_path = search_path.parent
+    
+    # Method 3: Try to find via installed package location
+    try:
+        import forge
+        forge_module_path = Path(forge.__file__).resolve()
+        # Go up from forge/__init__.py to project root
+        potential_root = forge_module_path.parent.parent
+        if (potential_root / "forge" / "cli.py").exists() and (potential_root / "pyproject.toml").exists():
+            return potential_root
+    except Exception:
+        pass
+    
+    # Fallback: assume current directory (for development)
+    return Path.cwd()
+
+
+def get_or_create_venv(project_root: Path) -> Path:
+    """Get existing venv or create a new one in the Forge project"""
+    # Check common venv locations
+    venv_paths = [
+        project_root / "venv",
+        project_root / ".venv",
+    ]
+    
+    for venv_path in venv_paths:
+        if venv_path.exists():
+            python_exe = get_venv_python(venv_path)
+            if python_exe.exists():
+                return venv_path
+    
+    # Create new venv in project root
+    venv_path = project_root / "venv"
+    console.print(f"[cyan]🔧 Creating virtual environment at {venv_path}...[/cyan]")
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "venv", str(venv_path)],
+            check=True,
+            capture_output=True,
+        )
+        console.print(f"[green]✓ Virtual environment created[/green]")
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]Failed to create virtual environment: {e}[/red]")
+        raise typer.Exit(1)
+    
+    return venv_path
+
+
+def get_venv_python(venv_path: Path) -> Path:
+    """Get the Python executable from venv"""
+    if sys.platform == "win32":
+        return venv_path / "Scripts" / "python.exe"
+    else:
+        return venv_path / "bin" / "python"
+
+
+def check_package_installed(python_exe: Path, package: str) -> bool:
+    """Check if a package is installed in the venv"""
+    try:
+        result = subprocess.run(
+            [str(python_exe), "-c", f"import {package}"],
+            capture_output=True,
+            timeout=5,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+def install_requirements(python_exe: Path, project_root: Path) -> None:
+    """Install Python dependencies from requirements.txt"""
+    requirements_file = project_root / "requirements.txt"
+    if not requirements_file.exists():
+        console.print("[yellow]⚠️  requirements.txt not found, skipping...[/yellow]")
+        return
+    
+    console.print("[cyan]📦 Installing Python dependencies...[/cyan]")
+    try:
+        result = subprocess.run(
+            [str(python_exe), "-m", "pip", "install", "-r", str(requirements_file)],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            console.print("[red]Failed to install requirements[/red]")
+            console.print(result.stderr)
+            raise typer.Exit(1)
+        console.print("[green]✓ Python dependencies installed[/green]")
+    except Exception as e:
+        console.print(f"[red]Error installing requirements: {e}[/red]")
+        raise typer.Exit(1)
+
+
+def install_forge(python_exe: Path, project_root: Path) -> None:
+    """Install Forge in editable mode"""
+    console.print("[cyan]📦 Installing Forge in editable mode...[/cyan]")
+    try:
+        result = subprocess.run(
+            [str(python_exe), "-m", "pip", "install", "-e", "."],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            console.print("[yellow]⚠️  Failed to install Forge in editable mode[/yellow]")
+            console.print("[yellow]Continuing anyway...[/yellow]")
+        else:
+            console.print("[green]✓ Forge installed[/green]")
+    except Exception as e:
+        console.print(f"[yellow]⚠️  Error installing Forge: {e}[/yellow]")
+        console.print("[yellow]Continuing anyway...[/yellow]")
+
+
 @app.command()
 def run(
     port: int = typer.Option(8000, help="Backend port"),
     frontend_port: int = typer.Option(5173, help="Frontend dev server port"),
     open_browser: bool = typer.Option(True, help="Open browser automatically"),
+    skip_setup: bool = typer.Option(False, help="Skip dependency installation"),
 ):
-    """Start Forge dashboard (backend + frontend)"""
-    import subprocess
-    import signal
-    import sys
-    import time
-    import webbrowser
-    import threading
+    """Start Forge dashboard (backend + frontend) - All-in-one setup and run"""
     
-    repo_root = find_repo_root()
-    if repo_root is None:
-        repo_root = Path.cwd()
+    # Find Forge project root (not user's repo)
+    forge_root = find_forge_project_root()
+    console.print(f"[cyan]📍 Forge project: {forge_root}[/cyan]")
     
     # Find frontend directory
-    frontend_dir = repo_root.parent / "Forge" / "frontend"
-    if not frontend_dir.exists():
-        # Try current directory structure
-        frontend_dir = repo_root / "frontend"
-    
+    frontend_dir = forge_root / "frontend"
     if not frontend_dir.exists():
         console.print("[red]Error: Frontend directory not found[/red]")
         console.print(f"Expected: {frontend_dir}")
-        console.print("Please ensure the frontend directory exists.")
         raise typer.Exit(1)
     
+    # Setup phase
+    if not skip_setup:
+        console.print("\n[bold cyan]🚀 Setting up Forge...[/bold cyan]\n")
+        
+        # Get or create venv
+        venv_path = get_or_create_venv(forge_root)
+        venv_python = get_venv_python(venv_path)
+        
+        if not venv_python.exists():
+            console.print(f"[red]Error: Python executable not found at {venv_python}[/red]")
+            raise typer.Exit(1)
+        
+        console.print(f"[green]✓ Using virtual environment: {venv_path}[/green]")
+        
+        # Upgrade pip first
+        console.print("[cyan]📦 Upgrading pip...[/cyan]")
+        subprocess.run(
+            [str(venv_python), "-m", "pip", "install", "--upgrade", "pip"],
+            capture_output=True,
+        )
+        
+        # Install Python dependencies
+        if not check_package_installed(venv_python, "uvicorn"):
+            install_requirements(venv_python, forge_root)
+        else:
+            console.print("[green]✓ Python dependencies already installed[/green]")
+        
+        # Install Forge in editable mode
+        if not check_package_installed(venv_python, "forge"):
+            install_forge(venv_python, forge_root)
+        else:
+            console.print("[green]✓ Forge already installed[/green]")
+        
+        # Install frontend dependencies
+        if not (frontend_dir / "node_modules").exists():
+            console.print("[cyan]📦 Installing frontend dependencies...[/cyan]")
+            if not shutil.which("npm"):
+                console.print("[red]Error: npm not found. Please install Node.js[/red]")
+                raise typer.Exit(1)
+            
+            result = subprocess.run(
+                ["npm", "install"],
+                cwd=frontend_dir,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                console.print("[red]Failed to install frontend dependencies[/red]")
+                console.print(result.stderr)
+                raise typer.Exit(1)
+            console.print("[green]✓ Frontend dependencies installed[/green]")
+        else:
+            console.print("[green]✓ Frontend dependencies already installed[/green]")
+        
+        console.print("\n[bold green]✓ Setup complete![/bold green]\n")
+    else:
+        # Use existing venv or system Python
+        venv_path = forge_root / "venv"
+        if venv_path.exists():
+            venv_python = get_venv_python(venv_path)
+        else:
+            venv_python = Path(sys.executable)
+    
+    # Runtime phase
     backend_process = None
     frontend_process = None
     
@@ -823,30 +1011,17 @@ def run(
         from forge.database.models import init_db
         init_db()
         
-        # Start FastAPI backend
-        console.print(f"[cyan]Starting FastAPI backend on port {port}...[/cyan]")
+        # Start FastAPI backend using venv Python
+        console.print(f"[cyan]🚀 Starting FastAPI backend on port {port}...[/cyan]")
         backend_process = subprocess.Popen(
-            ["uvicorn", "forge.backend.app:app", "--reload", "--port", str(port)],
-            cwd=repo_root,
+            [str(venv_python), "-m", "uvicorn", "forge.backend.app:app", "--reload", "--port", str(port)],
+            cwd=forge_root,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
         
         # Start React frontend
-        console.print(f"[cyan]Starting React frontend on port {frontend_port}...[/cyan]")
-        # Check if node_modules exists, if not, install dependencies
-        if not (frontend_dir / "node_modules").exists():
-            console.print("[yellow]Installing frontend dependencies...[/yellow]")
-            install_process = subprocess.run(
-                ["npm", "install"],
-                cwd=frontend_dir,
-                capture_output=True,
-            )
-            if install_process.returncode != 0:
-                console.print("[red]Failed to install frontend dependencies[/red]")
-                console.print(install_process.stderr.decode())
-                raise typer.Exit(1)
-        
+        console.print(f"[cyan]🚀 Starting React frontend on port {frontend_port}...[/cyan]")
         frontend_process = subprocess.Popen(
             ["npm", "run", "dev", "--", "--port", str(frontend_port)],
             cwd=frontend_dir,
@@ -865,10 +1040,10 @@ def run(
             
             threading.Thread(target=open_browser_delayed, daemon=True).start()
         
-        console.print(f"[green]✓ Dashboard running![/green]")
+        console.print(f"\n[bold green]✓ Dashboard running![/bold green]")
         console.print(f"  Backend: http://localhost:{port}")
         console.print(f"  Frontend: http://localhost:{frontend_port}")
-        console.print(f"\n[yellow]Press Ctrl+C to stop[/yellow]")
+        console.print(f"\n[yellow]Press Ctrl+C to stop[/yellow]\n")
         
         # Wait for processes
         backend_process.wait()
