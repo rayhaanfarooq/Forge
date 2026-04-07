@@ -130,3 +130,49 @@ def ensure_repo_tracked(repo_path: Optional[Path] = None) -> Optional[Repository
     except Exception:
         return None
 
+
+def mark_branch_synced(
+    branch_name: str,
+    repo_path: Optional[Path] = None,
+    session: Optional[Session] = None,
+) -> None:
+    """Record a successful sync timestamp for a branch."""
+    try:
+        init_db()
+
+        if session is None:
+            session = get_session()
+            should_close = True
+        else:
+            should_close = False
+
+        try:
+            if repo_path is None:
+                repo_path = find_repo_root()
+                if repo_path is None:
+                    return
+
+            repo = (
+                session.query(Repository)
+                .filter_by(local_path=str(repo_path))
+                .first()
+            )
+            if not repo:
+                return
+
+            branch = (
+                session.query(Branch)
+                .filter_by(repo_id=repo.id, branch_name=branch_name)
+                .first()
+            )
+            if not branch:
+                return
+
+            branch.last_synced_at = datetime.utcnow()
+            branch.status = "active"
+            session.commit()
+        finally:
+            if should_close:
+                session.close()
+    except Exception as e:
+        print(f"Warning: Failed to mark branch synced: {e}")

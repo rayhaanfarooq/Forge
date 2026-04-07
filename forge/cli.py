@@ -48,7 +48,7 @@ from forge.utils.validation import (
     validate_branch_name,
 )
 from forge.metadata.branches import register_branch
-from forge.database.tracker import track_test_event, ensure_repo_tracked
+from forge.database.tracker import track_test_event, ensure_repo_tracked, mark_branch_synced
 
 app = typer.Typer(help="Forge - Opinionated Git workflows with AI-generated tests")
 console = Console()
@@ -345,6 +345,11 @@ def sync():
     
     try:
         sync_branch(config.base_branch, repo_root)
+        try:
+            ensure_repo_tracked(repo_root)
+            mark_branch_synced(current_branch, repo_root)
+        except Exception:
+            pass
         console.print("[green]✓ Branch synced successfully![/green]")
     except RuntimeError as e:
         console.print(f"[red]Error: {e}[/red]")
@@ -637,6 +642,11 @@ def submit(
     console.print("\n[bold]Step 1: Syncing branch...[/bold]")
     try:
         sync_branch(config.base_branch, repo_root)
+        try:
+            ensure_repo_tracked(repo_root)
+            mark_branch_synced(current_branch, repo_root)
+        except Exception:
+            pass
         console.print("[green]✓ Branch synced[/green]")
     except RuntimeError as e:
         console.print(f"[red]Error: {e}[/red]")
@@ -1019,8 +1029,6 @@ def run(
         backend_process = subprocess.Popen(
             [str(venv_python), "-m", "uvicorn", "forge.backend.app:app", "--reload", "--port", str(port)],
             cwd=forge_root,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
         )
         
         # Start React frontend
@@ -1028,8 +1036,6 @@ def run(
         frontend_process = subprocess.Popen(
             ["npm", "run", "dev", "--", "--port", str(frontend_port)],
             cwd=frontend_dir,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
         )
         
         # Wait a bit for servers to start
@@ -1062,4 +1068,3 @@ def run(
 
 if __name__ == "__main__":
     app()
-

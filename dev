@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR=""
+
+print_help() {
+  cat <<'EOF'
+Usage:
+  ./dev up [forge run options]
+  ./dev help
+
+Commands:
+  up      Create or reuse the project virtualenv, install dependencies, and start the Forge backend + frontend.
+  help    Show this message.
+
+Examples:
+  ./dev up
+  ./dev up --no-open-browser
+  ./dev up --port 8100 --frontend-port 5174
+EOF
+}
+
+find_venv_dir() {
+  if [[ -d "$ROOT_DIR/venv" ]]; then
+    echo "$ROOT_DIR/venv"
+    return
+  fi
+
+  if [[ -d "$ROOT_DIR/.venv" ]]; then
+    echo "$ROOT_DIR/.venv"
+    return
+  fi
+
+  echo "$ROOT_DIR/venv"
+}
+
+ensure_python() {
+  if command -v python3 >/dev/null 2>&1; then
+    command -v python3
+    return
+  fi
+
+  if command -v python >/dev/null 2>&1; then
+    command -v python
+    return
+  fi
+
+  echo "Error: python3 is required to bootstrap Forge." >&2
+  exit 1
+}
+
+ensure_npm() {
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "Error: npm is required to run the Forge frontend." >&2
+    exit 1
+  fi
+}
+
+bootstrap() {
+  local bootstrap_python
+  bootstrap_python="$(ensure_python)"
+  ensure_npm
+
+  VENV_DIR="$(find_venv_dir)"
+  local venv_python="$VENV_DIR/bin/python"
+  local python_stamp="$VENV_DIR/.forge-python-deps.stamp"
+  local frontend_stamp="$ROOT_DIR/frontend/.forge-node-deps.stamp"
+
+  if [[ ! -x "$venv_python" ]]; then
+    echo "Creating virtual environment at $VENV_DIR"
+    "$bootstrap_python" -m venv "$VENV_DIR"
+  fi
+
+  echo "Using virtual environment at $VENV_DIR"
+  if [[ ! -f "$python_stamp" || "$ROOT_DIR/requirements.txt" -nt "$python_stamp" || "$ROOT_DIR/pyproject.toml" -nt "$python_stamp" ]]; then
+    echo "Installing Python dependencies"
+    "$venv_python" -m pip install --upgrade pip >/dev/null
+    "$venv_python" -m pip install -r "$ROOT_DIR/requirements.txt"
+    "$venv_python" -m pip install -e "$ROOT_DIR"
+    touch "$python_stamp"
+  fi
+
+  if [[ ! -d "$ROOT_DIR/frontend/node_modules" || ! -f "$frontend_stamp" || "$ROOT_DIR/frontend/package.json" -nt "$frontend_stamp" || "$ROOT_DIR/frontend/package-lock.json" -nt "$frontend_stamp" ]]; then
+    echo "Installing frontend dependencies"
+    (cd "$ROOT_DIR/frontend" && npm install)
+    touch "$frontend_stamp"
+  fi
+}
+
+run_up() {
+  bootstrap
+  exec "$VENV_DIR/bin/python" -m forge.cli run --skip-setup "$@"
+}
+
+COMMAND="${1:-help}"
+if [[ $# -gt 0 ]]; then
+  shift
+fi
+
+case "$COMMAND" in
+  up)
+    run_up "$@"
+    ;;
+  help|-h|--help)
+    print_help
+    ;;
+  *)
+    echo "Unknown command: $COMMAND" >&2
+    echo >&2
+    print_help >&2
+    exit 1
+    ;;
+esac

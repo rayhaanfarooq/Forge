@@ -78,6 +78,12 @@ Forge intentionally does NOT:
    forge run
    ```
 
+   Or use the repo-local dev launcher:
+
+   ```bash
+   ./dev up
+   ```
+
    This automatically:
 
    - Creates a virtual environment if needed
@@ -108,6 +114,18 @@ forge run --port 8000 --frontend-port 5173
 forge run --skip-setup             # Skip dependency installation
 forge run --no-open-browser        # Don't open browser automatically
 ```
+
+### `./dev up`
+
+Repo-local developer entrypoint for bringing up Forge in one command.
+
+```bash
+./dev up
+./dev up --no-open-browser
+./dev up --port 8100 --frontend-port 5174
+```
+
+It bootstraps or reuses the project virtual environment, installs Python and frontend dependencies, and then starts the same backend + frontend stack as `forge run`.
 
 ### `forge init`
 

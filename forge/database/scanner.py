@@ -2,12 +2,11 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 from sqlalchemy.orm import Session
 
-from forge.database.models import Repository, Branch, Commit, get_session, init_db
+from forge.database.models import Repository, Branch, Commit, get_session
 from forge.core.git_ops import (
-    get_current_branch,
     list_branches,
     detect_main_branch,
     run_git_command,
@@ -78,10 +77,13 @@ def scan_repository(repo_path: Path, session: Optional[Session] = None) -> Repos
                 parent_branch = None
                 try:
                     metadata = get_branch_metadata(branch_name, repo_path)
-                    if metadata and metadata.get("base_branch"):
-                        parent_branch = metadata["base_branch"]
+                    if metadata and metadata.base:
+                        parent_branch = metadata.base
                 except Exception:
                     pass
+
+                if parent_branch is None and branch_name != repo.base_branch:
+                    parent_branch = repo.base_branch
 
                 branch = Branch(
                     repo_id=repo.id,
@@ -120,17 +122,15 @@ def _scan_branch_commits(
             [
                 "log",
                 branch_name,
-                "--pretty=format:%H|%an|%ad|%s",
-                "--date=iso",
+                "--pretty=format:%H%x1f%an%x1f%aI%x1f%s",
                 "--numstat",
             ],
             repo_path,
         )
 
-        if not result:
+        if not result.stdout.strip():
             return
 
-        lines = result.strip().split("\n")
         current_hash = None
         current_author = None
         current_timestamp = None
@@ -139,10 +139,35 @@ def _scan_branch_commits(
         lines_added = 0
         lines_removed = 0
 
-        for line in lines:
-            if "|" in line:
-                # Commit header
-                parts = line.split("|", 3)
+        def save_current_commit():
+            if not current_hash:
+                return
+
+            existing = (
+                session.query(Commit)
+                .filter_by(commit_hash=current_hash, branch_id=branch_id)
+                .first()
+            )
+
+            if not existing:
+                session.add(
+                    Commit(
+                        commit_hash=current_hash,
+                        repo_id=repo_id,
+                        branch_id=branch_id,
+                        author=current_author or "Unknown",
+                        timestamp=current_timestamp or datetime.utcnow(),
+                        message=current_message or "",
+                        files_changed_count=files_changed,
+                        lines_added=lines_added,
+                        lines_removed=lines_removed,
+                    )
+                )
+
+        for line in result.stdout.splitlines():
+            if "\x1f" in line:
+                save_current_commit()
+                parts = line.split("\x1f", 3)
                 if len(parts) == 4:
                     current_hash = parts[0]
                     current_author = parts[1]
@@ -155,7 +180,6 @@ def _scan_branch_commits(
                     lines_added = 0
                     lines_removed = 0
             elif line and current_hash:
-                # Stats line
                 parts = line.split("\t")
                 if len(parts) == 3:
                     try:
@@ -167,30 +191,8 @@ def _scan_branch_commits(
                     except ValueError:
                         pass
 
-            # Check if we should save this commit
-            if current_hash and line == "" or (line and "|" in line and current_hash):
-                # Check if commit already exists
-                existing = (
-                    session.query(Commit)
-                    .filter_by(commit_hash=current_hash, branch_id=branch_id)
-                    .first()
-                )
-
-                if not existing:
-                    commit = Commit(
-                        commit_hash=current_hash,
-                        repo_id=repo_id,
-                        branch_id=branch_id,
-                        author=current_author or "Unknown",
-                        timestamp=current_timestamp or datetime.utcnow(),
-                        message=current_message or "",
-                        files_changed_count=files_changed,
-                        lines_added=lines_added,
-                        lines_removed=lines_removed,
-                    )
-                    session.add(commit)
+        save_current_commit()
 
     except Exception as e:
         # Log error but don't fail
         print(f"Error scanning commits for branch {branch_name}: {e}")
-

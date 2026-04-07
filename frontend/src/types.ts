@@ -59,3 +59,79 @@ export interface Stats {
   recent_activity: number;
 }
 
+export interface CoverageArea {
+  path: string;
+  untested_functions: number;
+}
+
+export interface CoverageSummary {
+  coverage_percent: number;
+  total_public_functions: number;
+  tested_public_functions: number;
+  generated_test_files: number;
+  source_files_scanned: number;
+  untested_areas: CoverageArea[];
+}
+
+export interface Readiness {
+  synced_with_base: boolean;
+  tests_passing: boolean;
+  coverage_sufficient: boolean;
+  no_conflicts: boolean;
+  ready_to_submit: boolean;
+}
+
+export interface ActivityItem {
+  kind: string;
+  title: string;
+  detail: string;
+  status: string;
+  timestamp: string;
+}
+
+export interface BranchNode {
+  id: number;
+  branch_name: string;
+  parent_branch: string | null;
+  base_branch: string;
+  status: string;
+  health: string;
+  is_current: boolean;
+  commits_ahead: number;
+  commits_behind: number;
+  last_synced_at: string | null;
+  latest_activity_at: string | null;
+  latest_commit_message: string | null;
+  latest_commit_hash: string | null;
+  latest_commit_author: string | null;
+  test_status: string;
+  pr_status: string;
+}
+
+export interface TimelineCommit {
+  commit_hash: string;
+  author: string;
+  timestamp: string;
+  message: string;
+  files_changed_count: number;
+  lines_added: number;
+  lines_removed: number;
+}
+
+export interface RepositoryDashboard {
+  repository: Repository;
+  current_branch: string;
+  selected_branch: string;
+  sync_status: string;
+  branch_graph: BranchNode[];
+  commit_timeline: TimelineCommit[];
+  coverage: CoverageSummary;
+  readiness: Readiness;
+  activity_feed: ActivityItem[];
+}
+
+export interface RepoCommandResult {
+  action: string;
+  success: boolean;
+  output: string;
+}
